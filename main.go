@@ -16,6 +16,22 @@ type Project struct {
 	Path string `yaml:"path"`
 }
 
+// isUnixShell detects if we're running in a Unix-like shell on Windows (Git Bash, MSYS2, Cygwin)
+func isUnixShell() bool {
+	if runtime.GOOS != "windows" {
+		return true
+	}
+	// MSYSTEM is set by Git Bash/MSYS2 (e.g., MINGW64, MINGW32, MSYS)
+	if os.Getenv("MSYSTEM") != "" {
+		return true
+	}
+	// CYGWIN/TERM check for Cygwin environments
+	if strings.HasPrefix(os.Getenv("TERM"), "cygwin") {
+		return true
+	}
+	return false
+}
+
 func expandPath(path string) string {
 	if strings.HasPrefix(path, "~/") {
 		home, err := os.UserHomeDir()
@@ -72,12 +88,12 @@ func runProject(project Project) error {
 	fmt.Printf("Changed to: %s\n", path)
 	fmt.Printf("Running: %s\n\n", project.Cmd)
 
-	// Prepare command based on OS
+	// Prepare command based on shell type
 	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", project.Cmd)
-	} else {
+	if isUnixShell() {
 		cmd = exec.Command("sh", "-c", project.Cmd)
+	} else {
+		cmd = exec.Command("cmd", "/c", project.Cmd)
 	}
 
 	// Connect stdin/stdout/stderr for interactive use
