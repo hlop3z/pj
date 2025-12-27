@@ -16,20 +16,31 @@ type Project struct {
 	Path string `yaml:"path"`
 }
 
-// isUnixShell detects if we're running in a Unix-like shell on Windows (Git Bash, MSYS2, Cygwin)
-func isUnixShell() bool {
+// useUnixShell returns true if we should use bash (VS Code terminal on Windows, or Unix systems)
+// Standalone Git Bash (MinTTY) has PTY issues with Windows console programs, so we use cmd there
+func useUnixShell() bool {
 	if runtime.GOOS != "windows" {
 		return true
 	}
-	// MSYSTEM is set by Git Bash/MSYS2 (e.g., MINGW64, MINGW32, MSYS)
-	if os.Getenv("MSYSTEM") != "" {
+	// VS Code terminal with Git Bash works well with bash
+	if os.Getenv("TERM_PROGRAM") == "vscode" && os.Getenv("MSYSTEM") != "" {
 		return true
 	}
-	// CYGWIN/TERM check for Cygwin environments
-	if strings.HasPrefix(os.Getenv("TERM"), "cygwin") {
+	// Windows Terminal with Git Bash also works
+	if os.Getenv("WT_SESSION") != "" && os.Getenv("MSYSTEM") != "" {
 		return true
 	}
 	return false
+}
+
+// toUnixPath converts Windows path to Unix-style for Git Bash (C:\Users -> /c/Users)
+func toUnixPath(winPath string) string {
+	path := strings.ReplaceAll(winPath, "\\", "/")
+	if len(path) >= 2 && path[1] == ':' {
+		drive := strings.ToLower(string(path[0]))
+		path = "/" + drive + path[2:]
+	}
+	return path
 }
 
 func expandPath(path string) string {
@@ -80,20 +91,22 @@ func runProject(project Project) error {
 		return fmt.Errorf("path does not exist: %s", path)
 	}
 
-	// Change to project directory
-	if err := os.Chdir(path); err != nil {
-		return fmt.Errorf("failed to change directory: %w", err)
-	}
-
 	fmt.Printf("Changed to: %s\n", path)
 	fmt.Printf("Running: %s\n\n", project.Cmd)
 
-	// Prepare command based on shell type
 	var cmd *exec.Cmd
-	if isUnixShell() {
-		cmd = exec.Command("sh", "-c", project.Cmd)
+	if useUnixShell() {
+		// For Unix systems or VS Code/Windows Terminal with Git Bash
+		unixPath := path
+		if runtime.GOOS == "windows" {
+			unixPath = toUnixPath(path)
+		}
+		fullCmd := fmt.Sprintf("cd '%s' && %s", unixPath, project.Cmd)
+		cmd = exec.Command("bash", "-c", fullCmd)
 	} else {
+		// For Windows CMD/PowerShell/standalone Git Bash
 		cmd = exec.Command("cmd", "/c", project.Cmd)
+		cmd.Dir = path
 	}
 
 	// Connect stdin/stdout/stderr for interactive use
