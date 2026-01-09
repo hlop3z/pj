@@ -4,6 +4,12 @@ A simple CLI tool to quickly jump into project directories and launch commands.
 
 ## Installation
 
+```sh
+curl -fsSL https://raw.githubusercontent.com/hlop3z/pj/main/install.sh | sh
+```
+
+## Installation (Source)
+
 ```bash
 go build -o pj.exe .   # Windows
 go build -o pj .       # Linux/macOS
