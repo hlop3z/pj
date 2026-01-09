@@ -19,7 +19,7 @@ Move the executable to a directory in your PATH, or add the build directory to y
 
 ## Configuration
 
-Create an `apps.yaml` file in the same directory as the executable:
+Create an `apps.yaml` file in the any directory:
 
 ```yaml
 project-name:
