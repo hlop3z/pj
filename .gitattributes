@@ -1,0 +1,12 @@
+# Set the default behavior to auto-detect text files
+* text=auto
+
+# Mark Go files as the primary language
+*.go linguist-detectable=true
+
+# Mark shell scripts as not the primary language
+*.sh linguist-detectable=false
+install.sh linguist-detectable=false
+
+# Ensure Go is detected as the main language
+*.go linguist-language=Go
